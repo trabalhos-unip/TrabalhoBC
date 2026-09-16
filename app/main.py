@@ -107,6 +107,8 @@ class WSGILazy:
 
 
 app = WSGILazy()
+application = app
+handler = app
 
 
 def principal():
