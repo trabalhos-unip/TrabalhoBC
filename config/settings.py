@@ -1,8 +1,4 @@
-"""Configuração de exemplo para a aplicação.
-
-Em produção, cadastre as variáveis de ambiente no provedor. Localmente, estes
-fallbacks permitem rodar com `python -m app.main`.
-"""
+"""Configuração da aplicação por variáveis de ambiente."""
 
 import os
 
@@ -20,11 +16,12 @@ def _booleano(nome: str, padrao: bool = False) -> bool:
         return padrao
     return valor.strip().lower() in ("1", "true", "sim", "yes", "on")
 
+
 # --- Banco de dados MySQL ---
 DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = _inteiro("DB_PORT", 3306)
 DB_USER = os.getenv("DB_USER", "root")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "root")
 DB_NAME = os.getenv("DB_NAME", "biblioteca")
 
 # --- Servidor HTTP local ---

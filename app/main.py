@@ -1,8 +1,8 @@
 """Ponto de entrada do sistema.
 
-Monta a cadeia de dependências uma única vez e sobe o servidor HTTP:
+Monta a cadeia de dependências uma única vez e expõe a aplicação WSGI:
 
-    Database → Repositories → Services → Servidor
+    Database → Repositories → Services → API → WSGI/Servidor
 
 Execute a partir da raiz do projeto:
 
@@ -11,8 +11,10 @@ Execute a partir da raiz do projeto:
 
 from http.server import HTTPServer
 
+from app.core.api import AplicacaoAPI
 from app.core.database import Database
 from app.core.servidor import Servidor
+from app.core.wsgi import AplicacaoWSGI
 from app.repositories.emprestimo_repository import EmprestimoRepository, EmprestimoRepositoryMemoria
 from app.repositories.exemplar_repository import ExemplarRepository, ExemplarRepositoryMemoria
 from app.repositories.leitor_repository import LeitorRepository, LeitorRepositoryMemoria
@@ -21,7 +23,7 @@ from app.services.emprestimo_service import EmprestimoService
 from app.services.exemplar_service import ExemplarService
 from app.services.leitor_service import LeitorService
 from app.services.livro_service import LivroService
-from config import config
+from config import settings as config
 
 # Dados de exemplo do modo em memória: os mesmos do DML do documento de banco de dados.
 LIVROS_DE_EXEMPLO = [
@@ -60,27 +62,58 @@ def montar_repositorios():
     return livros, leitores, exemplares, emprestimos
 
 
-def carregar_dados_de_exemplo():
+def carregar_dados_de_exemplo(api: AplicacaoAPI):
     """Preenche o modo em memória passando pelos services, com as mesmas validações."""
     for dados in LIVROS_DE_EXEMPLO:
-        Servidor.livro_service.cadastrar(dados)
+        api.livro_service.cadastrar(dados)
     for dados in LEITORES_DE_EXEMPLO:
-        Servidor.leitor_service.cadastrar(dados)
+        api.leitor_service.cadastrar(dados)
     for dados in EXEMPLARES_DE_EXEMPLO:
-        Servidor.exemplar_service.cadastrar(dados)
+        api.exemplar_service.cadastrar(dados)
+
+
+def montar_api() -> AplicacaoAPI:
+    """Monta repositórios e services e devolve a aplicação da API."""
+    livros, leitores, exemplares, emprestimos = montar_repositorios()
+
+    api = AplicacaoAPI(
+        LivroService(livros, exemplares),
+        LeitorService(leitores, emprestimos),
+        ExemplarService(exemplares, livros, emprestimos),
+        EmprestimoService(emprestimos, leitores, exemplares),
+    )
+
+    if config.USAR_BANCO_MEMORIA:
+        carregar_dados_de_exemplo(api)
+
+    return api
+
+
+def criar_wsgi_app() -> AplicacaoWSGI:
+    """Cria a aplicação WSGI usada pela Vercel."""
+    return AplicacaoWSGI(montar_api())
+
+
+class WSGILazy:
+    """Atrasa a montagem da API até a primeira requisição WSGI."""
+
+    def __init__(self):
+        self._app = None
+
+    def __call__(self, environ, start_response):
+        if self._app is None:
+            self._app = criar_wsgi_app()
+        return self._app(environ, start_response)
+
+
+app = WSGILazy()
 
 
 def principal():
-    """Monta repositórios -> services -> Servidor e sobe o servidor."""
-    livros, leitores, exemplares, emprestimos = montar_repositorios()
-
-    Servidor.livro_service = LivroService(livros, exemplares)
-    Servidor.leitor_service = LeitorService(leitores, emprestimos)
-    Servidor.exemplar_service = ExemplarService(exemplares, livros, emprestimos)
-    Servidor.emprestimo_service = EmprestimoService(emprestimos, leitores, exemplares)
+    """Monta repositórios -> services -> Servidor e sobe o servidor local."""
+    Servidor.api = montar_api()
 
     if config.USAR_BANCO_MEMORIA:
-        carregar_dados_de_exemplo()
         print("Modo em memória: começa com dados de exemplo; os cadastros somem ao reiniciar.")
 
     servidor = HTTPServer((config.SERVIDOR_HOST, config.SERVIDOR_PORTA), Servidor)
