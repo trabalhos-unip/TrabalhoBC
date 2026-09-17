@@ -75,10 +75,11 @@
                 <p id="mensagem-formulario" class="mensagem mensagem-formulario" role="status"></p>
 
                 <div class="form-grid">
-                    <div class="campo campo-busca">
-                        <label for="livroBusca">Livro</label>
-                        <input type="text" id="livroBusca" placeholder="Digite o título ou o autor">
-                        <ul class="busca-lista" id="livroSugestoes" role="listbox" hidden></ul>
+                    <div class="campo">
+                        <label for="livroSelect">Livro</label>
+                        <select id="livroSelect" name="id_livro" required>
+                            <option value="">Selecione um livro</option>
+                        </select>
                     </div>
 
                     <div class="campo" id="campoQuantidade">

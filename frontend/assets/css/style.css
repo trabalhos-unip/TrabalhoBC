@@ -1038,6 +1038,7 @@ body::before {
 
 .campo textarea {
     min-height: 120px;
+    max-height: 140px;
     resize: vertical;
 }
 
@@ -1462,7 +1463,8 @@ body[data-theme="dark"] .campo textarea {
 }
 
 .campo textarea {
-    min-height: 9rem;
+    min-height: 120px;
+    max-height: 140px;
     resize: vertical;
     line-height: 1.6;
 }

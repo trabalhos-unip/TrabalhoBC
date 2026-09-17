@@ -29,23 +29,11 @@ class TelaEmprestimos {
         this.sortSelect = document.getElementById('sortSelect');
         this.themeToggle = document.getElementById('themeToggle');
         this.campoPrazo = document.getElementById('prazo_dias');
+        this.leitorSelect = document.getElementById('leitorSelect');
+        this.exemplarSelect = document.getElementById('exemplarSelect');
 
-        // Campos de busca no lugar das listas suspensas; quem procura é o servidor.
-        this.campoLeitor = new CampoBusca({
-            input: document.getElementById('leitorBusca'),
-            lista: document.getElementById('leitorSugestoes'),
-            buscar: (texto) => this.api.listarLeitores({ busca: texto }),
-            descrever: (leitor) => `${leitor.nome} — ${leitor.email}`,
-            obterId: (leitor) => leitor.id_leitor
-        });
-        this.campoExemplar = new CampoBusca({
-            input: document.getElementById('exemplarBusca'),
-            lista: document.getElementById('exemplarSugestoes'),
-            buscar: (texto) => this.api.listarExemplares({ busca: texto, status: 'DISPONIVEL' }),
-            descrever: (exemplar) => `${exemplar.titulo_livro} — Código ${exemplar.id_exemplar}`,
-            obterId: (exemplar) => exemplar.id_exemplar
-        });
-
+        this.leitores = [];
+        this.exemplaresDisponiveis = [];
         this.emprestimoConfirmando = null;
         this.esperaBusca = null;
         this.toastTimer = null;
@@ -58,7 +46,7 @@ class TelaEmprestimos {
         this.configurarCatalogo();
         this.configurarCadastro();
         this.configurarConfirmacaoDevolucao();
-        this.carregarEmprestimos();
+        this.carregarDados();
     }
 
     aplicarTemaSalvo() {
@@ -158,6 +146,65 @@ class TelaEmprestimos {
         };
     }
 
+    async carregarDados() {
+        try {
+            const [leitores, exemplares, emprestimos] = await Promise.all([
+                this.api.listarLeitores(),
+                this.api.listarExemplares({ status: 'DISPONIVEL' }),
+                this.api.listarEmprestimos(this.filtrosAtuais())
+            ]);
+            this.leitores = leitores;
+            this.exemplaresDisponiveis = exemplares;
+            this.preencherLeitoresSelect();
+            this.preencherExemplaresSelect();
+            this.desenharCatalogo(emprestimos, this.filtrosAtuais());
+        } catch (erro) {
+            this.exibirMensagem(erro.message, 'erro');
+        }
+    }
+
+    async carregarOpcoesFormulario() {
+        const [leitores, exemplares] = await Promise.all([
+            this.api.listarLeitores(),
+            this.api.listarExemplares({ status: 'DISPONIVEL' })
+        ]);
+        this.leitores = leitores;
+        this.exemplaresDisponiveis = exemplares;
+        this.preencherLeitoresSelect();
+        this.preencherExemplaresSelect();
+    }
+
+    preencherLeitoresSelect() {
+        if (!this.leitorSelect) return;
+
+        const valorAtual = this.leitorSelect.value;
+        this.leitorSelect.replaceChildren(new Option('Selecione um leitor', ''));
+
+        for (const leitor of this.leitores) {
+            this.leitorSelect.appendChild(new Option(`${leitor.nome} — ${leitor.email}`, String(leitor.id_leitor)));
+        }
+
+        if ([...this.leitorSelect.options].some((opcao) => opcao.value === valorAtual)) {
+            this.leitorSelect.value = valorAtual;
+        }
+    }
+
+    preencherExemplaresSelect() {
+        if (!this.exemplarSelect) return;
+
+        const valorAtual = this.exemplarSelect.value;
+        this.exemplarSelect.replaceChildren(new Option('Selecione um exemplar disponível', ''));
+
+        for (const exemplar of this.exemplaresDisponiveis) {
+            const texto = `${exemplar.titulo_livro} — Código ${exemplar.id_exemplar}`;
+            this.exemplarSelect.appendChild(new Option(texto, String(exemplar.id_exemplar)));
+        }
+
+        if ([...this.exemplarSelect.options].some((opcao) => opcao.value === valorAtual)) {
+            this.exemplarSelect.value = valorAtual;
+        }
+    }
+
     /* Pede ao servidor os empréstimos, já filtrados, ordenados e com leitor, livro e situação. */
     async carregarEmprestimos() {
         try {
@@ -255,11 +302,14 @@ class TelaEmprestimos {
 
     abrirModalCadastro() {
         this.formulario.reset();
-        this.campoLeitor.limpar();
-        this.campoExemplar.limpar();
+        if (this.leitorSelect) this.leitorSelect.value = '';
+        if (this.exemplarSelect) this.exemplarSelect.value = '';
         if (this.campoPrazo) this.campoPrazo.value = 7;
         this.modalTitle.textContent = 'Novo empréstimo';
         this.formulario.data_emprestimo.value = this.hojeISO();
+        this.carregarOpcoesFormulario().catch((erro) => {
+            this.exibirMensagem(erro.message, 'erro', this.mensagemFormulario);
+        });
 
         if (this.modalCadastro) {
             this.modalCadastro.classList.add('open');
@@ -277,17 +327,15 @@ class TelaEmprestimos {
             this.formulario.reset();
         }
 
-        this.campoLeitor.limpar();
-        this.campoExemplar.limpar();
+        if (this.leitorSelect) this.leitorSelect.value = '';
+        if (this.exemplarSelect) this.exemplarSelect.value = '';
         this.exibirMensagem('', '', this.mensagemFormulario);
     }
 
     formularioPreenchido() {
         return Boolean(
-            this.campoLeitor.valor
-            || this.campoExemplar.valor
-            || (this.campoLeitor.input && this.campoLeitor.input.value.trim())
-            || (this.campoExemplar.input && this.campoExemplar.input.value.trim())
+            (this.leitorSelect && this.leitorSelect.value)
+            || (this.exemplarSelect && this.exemplarSelect.value)
             || (this.campoPrazo && this.campoPrazo.value && this.campoPrazo.value !== '7')
             || (this.formulario.data_emprestimo && this.formulario.data_emprestimo.value !== this.hojeISO())
         );
@@ -310,8 +358,8 @@ class TelaEmprestimos {
 
         const botao = this.formulario.querySelector('button[type="submit"]');
         const emprestimo = {
-            id_leitor: this.campoLeitor.valor,
-            id_exemplar: this.campoExemplar.valor,
+            id_leitor: this.leitorSelect ? this.leitorSelect.value : '',
+            id_exemplar: this.exemplarSelect ? this.exemplarSelect.value : '',
             data_emprestimo: this.formulario.data_emprestimo.value,
             prazo_dias: this.campoPrazo ? this.campoPrazo.value : ''
         };
@@ -322,7 +370,7 @@ class TelaEmprestimos {
         try {
             await this.api.registrarEmprestimo(emprestimo);
             this.fecharModalCadastro();
-            await this.carregarEmprestimos();
+            await Promise.all([this.carregarOpcoesFormulario(), this.carregarEmprestimos()]);
             this.exibirMensagem('Empréstimo registrado.', 'sucesso');
         } catch (erro) {
             this.exibirMensagem(erro.message, 'erro', this.mensagemFormulario);

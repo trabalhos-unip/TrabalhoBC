@@ -45,7 +45,6 @@ class TelaLivros {
         // Estado das tags/chips do formulário
         this.autores = [];
         this.generos = [];
-        this.responsaveis = []; // O campo 'responsavel' é mantido apenas em memória/sessão (o backend app/models/livro.py não possui este campo).
 
         this.inputAutor = document.getElementById('input-autor');
         this.btnAddAutor = document.getElementById('btn-add-autor');
@@ -54,10 +53,6 @@ class TelaLivros {
         this.inputGenero = document.getElementById('input-genero');
         this.btnAddGenero = document.getElementById('btn-add-genero');
         this.chipsGenero = document.getElementById('chips-genero');
-
-        this.inputResponsavel = document.getElementById('input-responsavel');
-        this.btnAddResponsavel = document.getElementById('btn-add-responsavel');
-        this.chipsResponsavel = document.getElementById('chips-responsavel');
 
         this.botaoSalvar = null;
         this.livroEditandoId = null;
@@ -141,7 +136,6 @@ class TelaLivros {
 
         this.configurarCampoTag(this.inputAutor, this.btnAddAutor, 'autor');
         this.configurarCampoTag(this.inputGenero, this.btnAddGenero, 'genero');
-        this.configurarCampoTag(this.inputResponsavel, this.btnAddResponsavel, 'responsavel');
     }
 
     configurarCampoTag(input, btn, tipo) {
@@ -167,9 +161,6 @@ class TelaLivros {
         } else if (tipo === 'genero') {
             input = this.inputGenero;
             array = this.generos;
-        } else if (tipo === 'responsavel') {
-            input = this.inputResponsavel;
-            array = this.responsaveis;
         }
 
         if (!input || !array) return;
@@ -187,7 +178,6 @@ class TelaLivros {
         let array;
         if (tipo === 'autor') array = this.autores;
         else if (tipo === 'genero') array = this.generos;
-        else if (tipo === 'responsavel') array = this.responsaveis;
 
         if (!array) return;
 
@@ -204,9 +194,6 @@ class TelaLivros {
         } else if (tipo === 'genero') {
             container = this.chipsGenero;
             array = this.generos;
-        } else if (tipo === 'responsavel') {
-            container = this.chipsResponsavel;
-            array = this.responsaveis;
         }
 
         if (!container) return;
@@ -375,13 +362,10 @@ class TelaLivros {
         this.formulario.reset();
         this.autores = [];
         this.generos = [];
-        this.responsaveis = [];
         if (this.inputAutor) this.inputAutor.value = '';
         if (this.inputGenero) this.inputGenero.value = '';
-        if (this.inputResponsavel) this.inputResponsavel.value = '';
         this.desenharTags('autor');
         this.desenharTags('genero');
-        this.desenharTags('responsavel');
         this.campoDataCadastro.value = this.hojeISO();
         this.abrirPopupDoFormulario(
             'Cadastrar livro',
@@ -397,16 +381,12 @@ class TelaLivros {
         // Separa a string salva no backend por "; " para preencher as tags no formulário
         this.autores = livro.autor ? livro.autor.split('; ').map(s => s.trim()).filter(Boolean) : [];
         this.generos = livro.genero ? livro.genero.split('; ').map(s => s.trim()).filter(Boolean) : [];
-        // O backend (app/models/livro.py) não armazena o campo responsável; reinicia no formulário
-        this.responsaveis = [];
 
         if (this.inputAutor) this.inputAutor.value = '';
         if (this.inputGenero) this.inputGenero.value = '';
-        if (this.inputResponsavel) this.inputResponsavel.value = '';
 
         this.desenharTags('autor');
         this.desenharTags('genero');
-        this.desenharTags('responsavel');
 
         this.formulario.ano_lancamento.value = livro.ano_lancamento;
         this.formulario.resumo.value = livro.resumo;
@@ -439,15 +419,11 @@ class TelaLivros {
         if (this.inputGenero && this.inputGenero.value.trim()) {
             this.adicionarTag('genero');
         }
-        if (this.inputResponsavel && this.inputResponsavel.value.trim()) {
-            this.adicionarTag('responsavel');
-        }
 
         return {
             titulo: this.formulario.titulo.value,
             autor: this.autores.join('; '),
             genero: this.generos.join('; '),
-            responsavel: this.responsaveis.join('; '),
             ano_lancamento: this.formulario.ano_lancamento.value,
             resumo: this.formulario.resumo.value
         };
@@ -462,12 +438,10 @@ class TelaLivros {
             this.formulario.titulo.value.trim()
             || this.autores.length
             || this.generos.length
-            || this.responsaveis.length
             || this.formulario.ano_lancamento.value
             || this.formulario.resumo.value.trim()
             || (this.inputAutor && this.inputAutor.value.trim())
             || (this.inputGenero && this.inputGenero.value.trim())
-            || (this.inputResponsavel && this.inputResponsavel.value.trim())
         );
     }
 
@@ -494,13 +468,10 @@ class TelaLivros {
         this.formulario.reset();
         this.autores = [];
         this.generos = [];
-        this.responsaveis = [];
         if (this.inputAutor) this.inputAutor.value = '';
         if (this.inputGenero) this.inputGenero.value = '';
-        if (this.inputResponsavel) this.inputResponsavel.value = '';
         this.desenharTags('autor');
         this.desenharTags('genero');
-        this.desenharTags('responsavel');
         this.livroEditandoId = null;
         this.fechamentoPendente = false;
     }
@@ -613,8 +584,6 @@ class TelaLivros {
         const editando = this.livroEditandoId;
 
         // Objeto formatado para o back-end (Python app/models/livro.py).
-        // NOTA: O campo 'responsavel' é mantido apenas no estado local da sessão no front-end,
-        // pois o servidor Python atual não possui a coluna/propriedade 'responsavel' no banco/modelo.
         const livroParaEnvio = {
             titulo: livro.titulo,
             autor: livro.autor,

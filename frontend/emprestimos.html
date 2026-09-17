@@ -95,16 +95,18 @@
                 <p id="mensagem-formulario" class="mensagem mensagem-formulario" role="status"></p>
 
                 <div class="form-grid">
-                    <div class="campo campo-busca">
-                        <label for="leitorBusca">Leitor</label>
-                        <input type="text" id="leitorBusca" placeholder="Digite o nome ou o e-mail">
-                        <ul class="busca-lista" id="leitorSugestoes" role="listbox" hidden></ul>
+                    <div class="campo">
+                        <label for="leitorSelect">Leitor</label>
+                        <select id="leitorSelect" name="id_leitor" required>
+                            <option value="">Selecione um leitor</option>
+                        </select>
                     </div>
 
-                    <div class="campo campo-busca">
-                        <label for="exemplarBusca">Exemplar disponível</label>
-                        <input type="text" id="exemplarBusca" placeholder="Digite o título do livro">
-                        <ul class="busca-lista" id="exemplarSugestoes" role="listbox" hidden></ul>
+                    <div class="campo">
+                        <label for="exemplarSelect">Exemplar disponível</label>
+                        <select id="exemplarSelect" name="id_exemplar" required>
+                            <option value="">Selecione um exemplar disponível</option>
+                        </select>
                     </div>
 
                     <div class="campo">

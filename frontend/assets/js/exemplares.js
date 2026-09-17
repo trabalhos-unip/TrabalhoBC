@@ -22,14 +22,7 @@ class TelaExemplares {
         this.openForm = document.getElementById('openForm');
         this.searchInput = document.getElementById('searchInput');
         this.themeToggle = document.getElementById('themeToggle');
-        // Campo de busca no lugar da lista suspensa; quem procura os livros é o servidor.
-        this.campoLivro = new CampoBusca({
-            input: document.getElementById('livroBusca'),
-            lista: document.getElementById('livroSugestoes'),
-            buscar: (texto) => this.api.listarLivros({ busca: texto }),
-            descrever: (livro) => this.descreverLivro(livro),
-            obterId: (livro) => livro.id_livro
-        });
+        this.livroSelect = document.getElementById('livroSelect');
         this.campoQuantidade = document.getElementById('campoQuantidade');
         this.inputQuantidade = document.getElementById('quantidade');
         this.closeConfirmacao = document.getElementById('closeConfirmacao');
@@ -170,6 +163,7 @@ class TelaExemplares {
                 this.api.listarExemplares(filtros)
             ]);
             this.livros = livros;
+            this.preencherLivrosSelect();
             this.desenharCatalogo(exemplares);
         } catch (erro) {
             this.exibirMensagem(erro.message, 'erro');
@@ -191,6 +185,21 @@ class TelaExemplares {
     descreverLivro(livro) {
         const autor = livro.autor ? formatarListaTruncada(livro.autor, formatarNomeABNT) : '';
         return autor ? `${livro.titulo} — ${autor}` : livro.titulo;
+    }
+
+    preencherLivrosSelect() {
+        if (!this.livroSelect) return;
+
+        const valorAtual = this.livroSelect.value;
+        this.livroSelect.replaceChildren(new Option('Selecione um livro', ''));
+
+        for (const livro of this.livros) {
+            this.livroSelect.appendChild(new Option(this.descreverLivro(livro), String(livro.id_livro)));
+        }
+
+        if ([...this.livroSelect.options].some((opcao) => opcao.value === valorAtual)) {
+            this.livroSelect.value = valorAtual;
+        }
     }
 
     desenharCatalogo(exemplares) {
@@ -340,7 +349,7 @@ class TelaExemplares {
         if (this.campoQuantidade) this.campoQuantidade.style.display = '';
         this.modalTitle.textContent = 'Cadastrar exemplar';
         this.formulario.querySelector('button[type="submit"]').textContent = 'Cadastrar exemplar';
-        this.campoLivro.limpar();
+        if (this.livroSelect) this.livroSelect.value = '';
         if (this.modalCadastro) {
             this.modalCadastro.classList.add('open');
         }
@@ -356,14 +365,13 @@ class TelaExemplares {
             this.formulario.reset();
         }
 
-        this.campoLivro.limpar();
+        if (this.livroSelect) this.livroSelect.value = '';
         this.exibirMensagem('', '', this.mensagemFormulario);
     }
 
     formularioPreenchido() {
         return Boolean(
-            this.campoLivro.valor
-            || (this.campoLivro.input && this.campoLivro.input.value.trim())
+            (this.livroSelect && this.livroSelect.value)
             || (this.inputQuantidade && this.inputQuantidade.value && this.inputQuantidade.value !== '1')
         );
     }
@@ -384,7 +392,7 @@ class TelaExemplares {
         if (!this.formulario) return;
 
         const botao = this.formulario.querySelector('button[type="submit"]');
-        const idLivro = this.campoLivro.valor;
+        const idLivro = this.livroSelect ? this.livroSelect.value : '';
         const quantidade = this.inputQuantidade ? Math.max(1, parseInt(this.inputQuantidade.value, 10) || 1) : 1;
 
         const livro = Array.isArray(this.livros)
