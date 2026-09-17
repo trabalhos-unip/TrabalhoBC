@@ -84,7 +84,7 @@ Funcionalidades implementadas:
 
 ![Diagrama ER do banco Biblioteca](docs/der.png)
 
-## Índices da tabela `emprestimos`
+## Índices da tabela `emprestimos` - Os índices foram criados para reduzir o tempo de busca nas consultas realizadas sobre a tabela.
 
 | Índice | Coluna | Finalidade |
 |--------|---------|------------|
