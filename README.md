@@ -84,6 +84,15 @@ Funcionalidades implementadas:
 
 ![Diagrama ER do banco Biblioteca](docs/der.png)
 
+## Índices da tabela `emprestimos`
+
+| Índice | Coluna | Finalidade |
+|--------|---------|------------|
+| `idx_emprestimos_leitor` | `id_leitor` | Acelera consultas por leitor. |
+| `idx_emprestimos_exemplar` | `id_exemplar` | Acelera consultas por exemplar. |
+| `idx_emprestimos_abertos` | `data_devolucao` | Acelera consultas por empréstimos em aberto ou devolvidos. |
+| `idx_emprestimos_prevista` | `data_prevista_devolucao` | Acelera consultas por data prevista de devolução. |
+
 O arquivo vetorial editável está em `docs/der.svg`.
 
 **Relacionamentos:**
