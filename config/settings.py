@@ -18,7 +18,7 @@ def _booleano(nome: str, padrao: bool = False) -> bool:
 
 
 # --- Banco de dados MySQL ---
-DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_HOST = os.getenv("DB_HOST", "127.0.0.1")
 DB_PORT = _inteiro("DB_PORT", 3306)
 DB_USER = os.getenv("DB_USER", "root")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "root")

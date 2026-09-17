@@ -50,12 +50,10 @@ class TelaLivros {
         this.inputAutor = document.getElementById('input-autor');
         this.btnAddAutor = document.getElementById('btn-add-autor');
         this.chipsAutor = document.getElementById('chips-autor');
-        this.contadorAutor = document.getElementById('contador-autor');
 
         this.inputGenero = document.getElementById('input-genero');
         this.btnAddGenero = document.getElementById('btn-add-genero');
         this.chipsGenero = document.getElementById('chips-genero');
-        this.contadorGenero = document.getElementById('contador-genero');
 
         this.inputResponsavel = document.getElementById('input-responsavel');
         this.btnAddResponsavel = document.getElementById('btn-add-responsavel');
@@ -65,6 +63,7 @@ class TelaLivros {
         this.livroEditandoId = null;
         this.livroExcluindo = null;
         this.dadosOriginais = null;
+        this.fechamentoPendente = false;
         this.esperaBusca = null;
         this.toastTimer = null;
         this.toastHideTimer = null;
@@ -130,6 +129,7 @@ class TelaLivros {
         this.botaoSalvar = this.formulario.querySelector('button[type="submit"]');
 
         this.formulario.addEventListener('submit', (evento) => this.salvar(evento));
+        this.formulario.addEventListener('input', () => this.limparAvisoDeFechamento());
         this.closeModal.addEventListener('click', () => this.pedirFechamento());
         this.cancelForm.addEventListener('click', () => this.pedirFechamento());
         this.modalBackdrop.addEventListener('click', (evento) => {
@@ -180,6 +180,7 @@ class TelaLivros {
         array.push(valor);
         input.value = '';
         this.desenharTags(tipo);
+        this.limparAvisoDeFechamento();
     }
 
     removerTag(tipo, indice) {
@@ -192,6 +193,7 @@ class TelaLivros {
 
         array.splice(indice, 1);
         this.desenharTags(tipo);
+        this.limparAvisoDeFechamento();
     }
 
     desenharTags(tipo) {
@@ -199,11 +201,9 @@ class TelaLivros {
         if (tipo === 'autor') {
             container = this.chipsAutor;
             array = this.autores;
-            this.atualizarContadorAutor();
         } else if (tipo === 'genero') {
             container = this.chipsGenero;
             array = this.generos;
-            this.atualizarContadorGenero();
         } else if (tipo === 'responsavel') {
             container = this.chipsResponsavel;
             array = this.responsaveis;
@@ -226,26 +226,6 @@ class TelaLivros {
             chip.append(spanTexto, btnRemove);
             container.appendChild(chip);
         });
-    }
-
-    atualizarContadorAutor() {
-        if (!this.contadorAutor) return;
-        const total = this.autores.join('; ').length;
-        const limite = 150;
-        const atingiu = total > limite;
-
-        this.contadorAutor.textContent = `${total}/${limite} caracteres${atingiu ? ' — limite excedido!' : ''}`;
-        this.contadorAutor.classList.toggle('limite', atingiu);
-    }
-
-    atualizarContadorGenero() {
-        if (!this.contadorGenero) return;
-        const total = this.generos.join('; ').length;
-        const limite = 80;
-        const atingiu = total > limite;
-
-        this.contadorGenero.textContent = `${total}/${limite} caracteres${atingiu ? ' — limite excedido!' : ''}`;
-        this.contadorGenero.classList.toggle('limite', atingiu);
     }
 
     configurarVisualizacao() {
@@ -316,9 +296,11 @@ class TelaLivros {
         }
 
         this.exibirMensagem('');
+        const fragmento = document.createDocumentFragment();
         for (const livro of livros) {
-            this.catalogList.appendChild(this.criarItem(livro));
+            fragmento.appendChild(this.criarItem(livro));
         }
+        this.catalogList.appendChild(fragmento);
     }
 
     /* Monta um card do catálogo. Usa textContent: o conteúdo vem do usuário. */
@@ -443,6 +425,7 @@ class TelaLivros {
         this.modalSubtitle.textContent = subtitulo;
         this.botaoSalvar.textContent = textoDoBotao;
         this.dadosOriginais = JSON.stringify(this.dadosDoFormulario());
+        this.fechamentoPendente = false;
         this.atualizarContadorResumo();
         this.exibirMensagem('', '', this.mensagemFormulario);
         this.modalBackdrop.classList.add('open');
@@ -474,14 +457,36 @@ class TelaLivros {
         return JSON.stringify(this.dadosDoFormulario()) !== this.dadosOriginais;
     }
 
-    /* Fechar pelo X, pelo Voltar ou clicando fora pede confirmação se algo mudou. */
+    formularioPreenchido() {
+        return Boolean(
+            this.formulario.titulo.value.trim()
+            || this.autores.length
+            || this.generos.length
+            || this.responsaveis.length
+            || this.formulario.ano_lancamento.value
+            || this.formulario.resumo.value.trim()
+            || (this.inputAutor && this.inputAutor.value.trim())
+            || (this.inputGenero && this.inputGenero.value.trim())
+            || (this.inputResponsavel && this.inputResponsavel.value.trim())
+        );
+    }
+
+    /* Fechar pelo X, pelo Voltar ou clicando fora pede confirmação se houver dados no formulário. */
     pedirFechamento() {
+        const deveConfirmar = Boolean(this.livroEditandoId || this.formularioAlterado() || this.formularioPreenchido());
         const pergunta = this.livroEditandoId
             ? 'Deseja cancelar a edição do livro?'
             : 'Deseja cancelar o cadastro do livro?';
 
-        if (this.formularioAlterado() && !window.confirm(pergunta)) return;
+        if (deveConfirmar && !window.confirm(pergunta)) return;
         this.fecharFormulario();
+    }
+
+    limparAvisoDeFechamento() {
+        if (!this.fechamentoPendente) return;
+
+        this.fechamentoPendente = false;
+        this.exibirMensagem('', '', this.mensagemFormulario);
     }
 
     fecharFormulario() {
@@ -497,6 +502,7 @@ class TelaLivros {
         this.desenharTags('genero');
         this.desenharTags('responsavel');
         this.livroEditandoId = null;
+        this.fechamentoPendente = false;
     }
 
     visualizarLivro(livro) {
@@ -658,19 +664,21 @@ class TelaLivros {
         this.mensagem.setAttribute('role', 'status');
         this.mensagem.setAttribute('aria-live', 'polite');
 
-        if (tipo === 'sucesso') {
+        if (tipo === 'sucesso' || tipo === 'erro') {
             this.mensagem.classList.add('toast-visible');
+
+            const tempoVisivel = tipo === 'erro' ? 10000 : 2600;
 
             this.toastTimer = setTimeout(() => {
                 this.mensagem.classList.add('toast-leaving');
                 this.mensagem.classList.remove('toast-visible');
-            }, 2600);
+            }, tempoVisivel);
 
             this.toastHideTimer = setTimeout(() => {
                 this.mensagem.classList.remove('toast-visible', 'toast-leaving');
                 this.mensagem.textContent = '';
                 this.mensagem.className = 'mensagem';
-            }, 3400);
+            }, tempoVisivel + 800);
         }
     }
 }

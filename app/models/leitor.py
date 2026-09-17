@@ -40,7 +40,7 @@ class Leitor(BaseModel):
     id_leitor: int | None = None
     nome: str = Field(min_length=1, max_length=150)
     email: str = Field(min_length=1, max_length=150)
-    telefone: str | None = Field(default=None, max_length=20)
+    telefone: str = Field(min_length=1, max_length=20)
     data_cadastro: date = Field(default_factory=date.today)
 
     @field_validator("email")
@@ -54,17 +54,15 @@ class Leitor(BaseModel):
     @field_validator("telefone", mode="before")
     @classmethod
     def telefone_em_branco(cls, telefone):
-        """Telefone é opcional: em branco vira None (NULL no banco)."""
+        """Telefone é obrigatório: em branco vira string vazia para cair na validação."""
         if telefone is None or str(telefone).strip() == "":
-            return None
+            return ""
         return telefone
 
     @field_validator("telefone")
     @classmethod
-    def validar_telefone(cls, telefone: str | None) -> str | None:
+    def validar_telefone(cls, telefone: str) -> str:
         """Aceita só números e símbolos de telefone, com DDD: 10 dígitos (fixo) ou 11 (celular)."""
-        if telefone is None:
-            return None
         if not FORMATO_TELEFONE.match(telefone):
             raise PydanticCustomError(
                 "telefone_invalido",

@@ -233,11 +233,15 @@ class CursorFalso:
     def __init__(self):
         self.lastrowid = 0
         self.rowcount = 0
+        self.fechado = False
 
     def execute(self, sql, params=()):
         comando = sql.split()[0].upper()
         self.lastrowid = 10 if comando == "INSERT" else 0
         self.rowcount = 1 if comando == "INSERT" else 0
+
+    def close(self):
+        self.fechado = True
 
 
 class ConexaoFalsa:

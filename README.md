@@ -53,7 +53,7 @@ Funcionalidades implementadas:
 |---|---|---|
 | RN-06 | Nome e e-mail são obrigatórios. | Model `Leitor` (Pydantic) |
 | RN-07 | E-mail precisa ter formato válido; é armazenado em minúsculas e é único. | Model `Leitor` + DDL `UNIQUE (email)` |
-| RN-08 | Telefone é opcional; aceita números, espaços, parênteses, `+` e `-`. | Model `Leitor` (Pydantic) |
+| RN-08 | Telefone é obrigatório e deve ter DDD + número: 10 dígitos para fixo ou 11 dígitos para celular. | Model `Leitor` (Pydantic) |
 | RN-09 | Leitor com histórico de empréstimos (ativos ou devolvidos) não pode ser removido. | `LeitorService.remover` + DDL `ON DELETE RESTRICT` em emprestimos |
 
 #### RN-10 a RN-13 — Exemplares
@@ -118,18 +118,23 @@ CREATE TABLE livros (
 
     CONSTRAINT pk_livros PRIMARY KEY (id_livro),
     CONSTRAINT uq_livros_titulo_autor UNIQUE (titulo, autor),
-    CONSTRAINT ck_livros_ano CHECK (ano_lancamento BETWEEN 1450 AND 2100)
+    CONSTRAINT ck_livros_ano CHECK (ano_lancamento BETWEEN 1450 AND 2100),
+    INDEX idx_livros_genero (genero),
+    INDEX idx_livros_autor (autor),
+    INDEX idx_livros_data_cadastro (data_cadastro),
+    INDEX idx_livros_ano_lancamento (ano_lancamento)
 ) ENGINE = InnoDB;
 
 CREATE TABLE leitores (
     id_leitor     INT AUTO_INCREMENT,
     nome          VARCHAR(150) NOT NULL,
     email         VARCHAR(150) NOT NULL,
-    telefone      VARCHAR(20)  NULL,
+    telefone      VARCHAR(20)  NOT NULL,
     data_cadastro DATE         NOT NULL,
 
     CONSTRAINT pk_leitores PRIMARY KEY (id_leitor),
-    CONSTRAINT uq_leitores_email UNIQUE (email)
+    CONSTRAINT uq_leitores_email UNIQUE (email),
+    INDEX idx_leitores_nome (nome)
 ) ENGINE = InnoDB;
 
 CREATE TABLE exemplares (
@@ -190,7 +195,7 @@ CREATE TABLE emprestimos (
 | `id_leitor` | INT | NÃO | PK, AUTO_INCREMENT | Identificador único do leitor |
 | `nome` | VARCHAR(150) | NÃO | — | Nome completo |
 | `email` | VARCHAR(150) | NÃO | UNIQUE | Endereço de e-mail (único, armazenado em minúsculas) |
-| `telefone` | VARCHAR(20) | SIM | — | Telefone de contato (opcional) |
+| `telefone` | VARCHAR(20) | NÃO | — | Telefone de contato obrigatório |
 | `data_cadastro` | DATE | NÃO | — | Data de inclusão no sistema |
 
 #### Tabela `exemplares`
@@ -326,7 +331,7 @@ Copy-Item config\config.example.py config\config.py
 Abra `config/config.py` e preencha as credenciais do seu MySQL:
 
 ```python
-DB_HOST = "localhost"
+DB_HOST = "127.0.0.1"
 DB_PORT = 3306
 DB_USER = "root"        # seu usuário MySQL
 DB_PASSWORD = "senha"   # sua senha MySQL

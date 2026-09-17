@@ -61,9 +61,9 @@ class TestLeitor(unittest.TestCase):
         self.assertEqual(self.erros({**JOAO, "email": "joao.email.com"}),
                          ["O campo e-mail deve ser um endereço válido."])
 
-    def test_telefone_e_opcional(self):
-        self.assertIsNone(Leitor.model_validate({**JOAO, "telefone": "  "}).telefone)
-        self.assertIsNone(Leitor.model_validate({"nome": "Ana", "email": "ana@email.com"}).telefone)
+    def test_telefone_e_obrigatorio(self):
+        self.assertEqual(self.erros({**JOAO, "telefone": "  "}), ["O campo telefone é obrigatório."])
+        self.assertEqual(self.erros({"nome": "Ana", "email": "ana@email.com"}), ["O campo telefone é obrigatório."])
 
     def test_telefone_com_letras(self):
         self.assertIn("telefone", self.erros({**JOAO, "telefone": "15 9999-abcd"})[0])
@@ -105,6 +105,16 @@ class TestLeitorService(unittest.TestCase):
         self.assertEqual(leitor["id_leitor"], 1)
         self.assertEqual(leitor["data_cadastro"], date.today().isoformat())
 
+    def test_cadastrar_sem_telefone_e_recusado(self):
+        ok, leitor = self.service.cadastrar({"nome": "Ana Lima", "email": "ana@email.com"})
+        self.assertFalse(ok)
+        self.assertEqual(leitor, ["O campo telefone é obrigatório."])
+
+    def test_cadastrar_com_telefone_em_branco_e_recusado(self):
+        ok, leitor = self.service.cadastrar({"nome": "Ana Lima", "email": "ana@email.com", "telefone": "   "})
+        self.assertFalse(ok)
+        self.assertEqual(leitor, ["O campo telefone é obrigatório."])
+
     def test_email_duplicado_e_recusado_sem_diferenciar_maiusculas(self):
         self.service.cadastrar(JOAO)
         ok, erros = self.service.cadastrar({**MARIA, "email": "JOAO@EMAIL.COM"})
@@ -117,6 +127,12 @@ class TestLeitorService(unittest.TestCase):
         self.assertTrue(ok)
         self.assertEqual(leitor["nome"], "João da Silva")
         self.assertEqual(leitor["data_cadastro"], date.today().isoformat())
+
+    def test_editar_nao_pode_remover_telefone(self):
+        self.service.cadastrar(JOAO)
+        ok, leitor = self.service.editar(1, {"nome": "João Silva", "email": "joao@email.com", "telefone": ""})
+        self.assertFalse(ok)
+        self.assertEqual(leitor, ["O campo telefone é obrigatório."])
 
     def test_editar_mantendo_o_proprio_email(self):
         self.service.cadastrar(JOAO)

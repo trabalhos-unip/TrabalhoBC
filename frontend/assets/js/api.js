@@ -7,6 +7,7 @@
 class Api {
     constructor(base = '/api') {
         this.base = base;
+        this.requisicoesPendentes = new Map();
     }
 
     /* ---------- Livros ---------- */
@@ -62,10 +63,6 @@ class Api {
         return this.enviar('/exemplares', 'POST', exemplar);
     }
 
-    async atualizarExemplar(idExemplar, exemplar) {
-        return this.enviar(`/exemplares/${idExemplar}`, 'PUT', exemplar);
-    }
-
     async excluirExemplar(idExemplar) {
         return this.requisitar(`/exemplares/${idExemplar}`, { method: 'DELETE' });
     }
@@ -98,6 +95,7 @@ class Api {
 
     /* Envia dados em JSON. */
     async enviar(caminho, metodo, dados) {
+        this.requisicoesPendentes.clear();
         return this.requisitar(caminho, {
             method: metodo,
             headers: { 'Content-Type': 'application/json' },
@@ -107,6 +105,24 @@ class Api {
 
     /* Faz a requisição e transforma erro do servidor em exceção. */
     async requisitar(caminho, opcoes = {}) {
+        const metodo = (opcoes.method || 'GET').toUpperCase();
+        if (metodo !== 'GET') {
+            this.requisicoesPendentes.clear();
+        }
+
+        if (metodo === 'GET' && this.requisicoesPendentes.has(caminho)) {
+            return this.requisicoesPendentes.get(caminho);
+        }
+
+        const requisicao = this.executarRequisicao(caminho, opcoes);
+        if (metodo === 'GET') {
+            this.requisicoesPendentes.set(caminho, requisicao);
+            requisicao.finally(() => this.requisicoesPendentes.delete(caminho));
+        }
+        return requisicao;
+    }
+
+    async executarRequisicao(caminho, opcoes = {}) {
         let resposta;
         try {
             resposta = await fetch(this.base + caminho, opcoes);

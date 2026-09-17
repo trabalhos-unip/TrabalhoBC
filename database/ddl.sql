@@ -29,18 +29,23 @@ CREATE TABLE livros (
 
     CONSTRAINT pk_livros PRIMARY KEY (id_livro),
     CONSTRAINT uq_livros_titulo_autor UNIQUE (titulo, autor),
-    CONSTRAINT ck_livros_ano CHECK (ano_lancamento BETWEEN 1450 AND 2100)
+    CONSTRAINT ck_livros_ano CHECK (ano_lancamento BETWEEN 1450 AND 2100),
+    INDEX idx_livros_genero (genero),
+    INDEX idx_livros_autor (autor),
+    INDEX idx_livros_data_cadastro (data_cadastro),
+    INDEX idx_livros_ano_lancamento (ano_lancamento)
 ) ENGINE = InnoDB;
 
 CREATE TABLE leitores (
     id_leitor      INT AUTO_INCREMENT,
     nome           VARCHAR(150) NOT NULL,
     email          VARCHAR(150) NOT NULL,
-    telefone       VARCHAR(20)  NULL,
+    telefone       VARCHAR(20)  NOT NULL,
     data_cadastro  DATE         NOT NULL,
 
     CONSTRAINT pk_leitores PRIMARY KEY (id_leitor),
-    CONSTRAINT uq_leitores_email UNIQUE (email)
+    CONSTRAINT uq_leitores_email UNIQUE (email),
+    INDEX idx_leitores_nome (nome)
 ) ENGINE = InnoDB;
 
 CREATE TABLE exemplares (

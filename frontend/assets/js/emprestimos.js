@@ -112,17 +112,17 @@ class TelaEmprestimos {
         this.formulario.addEventListener('submit', (evento) => this.salvar(evento));
 
         if (this.closeCadastro) {
-            this.closeCadastro.addEventListener('click', () => this.fecharModalCadastro());
+            this.closeCadastro.addEventListener('click', () => this.pedirFechamentoCadastro());
         }
 
         if (this.cancelForm) {
-            this.cancelForm.addEventListener('click', () => this.fecharModalCadastro());
+            this.cancelForm.addEventListener('click', () => this.pedirFechamentoCadastro());
         }
 
         if (this.modalCadastro) {
             this.modalCadastro.addEventListener('click', (evento) => {
                 if (evento.target === this.modalCadastro) {
-                    this.fecharModalCadastro();
+                    this.pedirFechamentoCadastro();
                 }
             });
         }
@@ -183,6 +183,7 @@ class TelaEmprestimos {
         }
 
         this.exibirMensagem('');
+        const fragmento = document.createDocumentFragment();
         for (const emprestimo of emprestimos) {
             const item = document.createElement('article');
             item.className = 'catalog-item emprestimo-item';
@@ -206,8 +207,9 @@ class TelaEmprestimos {
                 this.criarColuna('SITUAÇÃO', emprestimo.situacao),
                 actions
             );
-            this.catalogList.appendChild(item);
+            fragmento.appendChild(item);
         }
+        this.catalogList.appendChild(fragmento);
     }
 
     /* Monta uma coluna do card. Usa textContent: o conteúdo vem do usuário. */
@@ -263,7 +265,7 @@ class TelaEmprestimos {
             this.modalCadastro.classList.add('open');
         }
         // Com o formulário aberto, limpa a mensagem da tela e a de dentro dele.
-        this.exibirMensagem('');
+        this.exibirMensagem('', '', this.mensagemFormulario);
     }
 
     fecharModalCadastro() {
@@ -277,6 +279,28 @@ class TelaEmprestimos {
 
         this.campoLeitor.limpar();
         this.campoExemplar.limpar();
+        this.exibirMensagem('', '', this.mensagemFormulario);
+    }
+
+    formularioPreenchido() {
+        return Boolean(
+            this.campoLeitor.valor
+            || this.campoExemplar.valor
+            || (this.campoLeitor.input && this.campoLeitor.input.value.trim())
+            || (this.campoExemplar.input && this.campoExemplar.input.value.trim())
+            || (this.campoPrazo && this.campoPrazo.value && this.campoPrazo.value !== '7')
+            || (this.formulario.data_emprestimo && this.formulario.data_emprestimo.value !== this.hojeISO())
+        );
+    }
+
+    pedirFechamentoCadastro() {
+        if (!this.formularioPreenchido()) {
+            this.fecharModalCadastro();
+            return;
+        }
+
+        if (!window.confirm('Deseja cancelar o cadastro do empréstimo?')) return;
+        this.fecharModalCadastro();
     }
 
     /* Envia leitor, exemplar, data e prazo; as regras e a data prevista ficam no servidor. */
@@ -293,7 +317,7 @@ class TelaEmprestimos {
         };
 
         botao.disabled = true;
-        this.exibirMensagem('Salvando...');
+        this.exibirMensagem('Salvando...', '', this.mensagemFormulario);
 
         try {
             await this.api.registrarEmprestimo(emprestimo);
@@ -301,7 +325,7 @@ class TelaEmprestimos {
             await this.carregarEmprestimos();
             this.exibirMensagem('Empréstimo registrado.', 'sucesso');
         } catch (erro) {
-            this.exibirMensagem(erro.message, 'erro');
+            this.exibirMensagem(erro.message, 'erro', this.mensagemFormulario);
         } finally {
             botao.disabled = false;
         }
@@ -353,9 +377,15 @@ class TelaEmprestimos {
     }
 
     /* Mostra a mensagem num lugar só: dentro do formulário, se ele estiver aberto; senão, no aviso da tela. */
-    exibirMensagem(texto, tipo = '') {
+    exibirMensagem(texto, tipo = '', alvo = null) {
         const classe = tipo ? `mensagem ${tipo}` : 'mensagem';
         const formularioAberto = Boolean(this.modalCadastro && this.modalCadastro.classList.contains('open'));
+
+        if (alvo) {
+            alvo.textContent = texto;
+            alvo.className = alvo === this.mensagemFormulario ? `${classe} mensagem-formulario` : classe;
+            return;
+        }
 
         if (this.mensagemFormulario) {
             this.mensagemFormulario.textContent = formularioAberto ? texto : '';
@@ -372,19 +402,21 @@ class TelaEmprestimos {
         this.mensagem.setAttribute('role', 'status');
         this.mensagem.setAttribute('aria-live', 'polite');
 
-        if (!formularioAberto && tipo === 'sucesso') {
+        if (!formularioAberto && (tipo === 'sucesso' || tipo === 'erro')) {
             this.mensagem.classList.add('toast-visible');
+
+            const tempoVisivel = tipo === 'erro' ? 10000 : 2600;
 
             this.toastTimer = setTimeout(() => {
                 this.mensagem.classList.add('toast-leaving');
                 this.mensagem.classList.remove('toast-visible');
-            }, 2600);
+            }, tempoVisivel);
 
             this.toastHideTimer = setTimeout(() => {
                 this.mensagem.classList.remove('toast-visible', 'toast-leaving');
                 this.mensagem.textContent = '';
                 this.mensagem.className = 'mensagem';
-            }, 3400);
+            }, tempoVisivel + 800);
         }
     }
 }

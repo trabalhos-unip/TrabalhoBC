@@ -16,9 +16,9 @@ As regras abaixo sao aplicadas pelos services antes de qualquer gravacao no banc
 
 | Regra | Comportamento |
 | --- | --- |
-| Campos obrigatorios | Nome e e-mail sao obrigatorios. |
+| Campos obrigatorios | Nome, e-mail e telefone sao obrigatorios. |
 | E-mail | Precisa ter formato valido, e armazenado em minusculas e e unico. |
-| Telefone | E opcional; quando informado, aceita numeros, espacos, parenteses, `+` e `-`. |
+| Telefone | Deve ter DDD + numero: 10 digitos para fixo ou 11 digitos para celular. |
 | Exclusao | Um leitor que possui emprestimos, ativos ou devolvidos, nao pode ser removido. |
 
 ## Exemplares

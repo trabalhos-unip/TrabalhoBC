@@ -34,6 +34,8 @@ class TelaLeitores {
         this.confirmText = document.getElementById('confirmText');
         this.leitorEditandoId = null;
         this.leitorExcluindo = null;
+        this.dadosOriginais = null;
+        this.fechamentoPendente = false;
         this.esperaBusca = null;
         this.toastTimer = null;
         this.toastHideTimer = null;
@@ -96,19 +98,30 @@ class TelaLeitores {
         this.formulario.addEventListener('submit', (evento) => this.salvar(evento));
 
         if (this.closeCadastro) {
-            this.closeCadastro.addEventListener('click', () => this.fecharModalCadastro());
+            this.closeCadastro.addEventListener('click', () => this.pedirFechamentoCadastro());
         }
 
         if (this.cancelForm) {
-            this.cancelForm.addEventListener('click', () => this.fecharModalCadastro());
+            this.cancelForm.addEventListener('click', () => this.pedirFechamentoCadastro());
         }
 
         if (this.modalCadastro) {
             this.modalCadastro.addEventListener('click', (evento) => {
                 if (evento.target === this.modalCadastro) {
-                    this.fecharModalCadastro();
+                    this.pedirFechamentoCadastro();
                 }
             });
+        }
+
+        if (this.formulario.telefone) {
+            this.formulario.telefone.addEventListener('input', () => {
+                this.formulario.telefone.value = this.formatarTelefone(this.formulario.telefone.value);
+                this.limparMensagemFormulario();
+            });
+        }
+
+        for (const campo of [this.formulario.nome, this.formulario.email]) {
+            if (campo) campo.addEventListener('input', () => this.limparMensagemFormulario());
         }
     }
 
@@ -174,9 +187,11 @@ class TelaLeitores {
         }
 
         this.exibirMensagem('');
+        const fragmento = document.createDocumentFragment();
         for (const leitor of leitores) {
-            this.catalogList.appendChild(this.criarItem(leitor));
+            fragmento.appendChild(this.criarItem(leitor));
         }
+        this.catalogList.appendChild(fragmento);
     }
 
     /* Monta um card do catálogo. Usa textContent: o conteúdo vem do usuário. */
@@ -261,6 +276,9 @@ class TelaLeitores {
         this.modalTitle.textContent = 'Cadastrar leitor';
         this.formulario.reset();
         this.formulario.data_cadastro.value = this.hojeISO();
+        this.dadosOriginais = JSON.stringify(this.dadosDoFormulario());
+        this.fechamentoPendente = false;
+        this.exibirMensagem('', '', this.mensagemFormulario);
         if (this.modalCadastro) {
             this.modalCadastro.classList.add('open');
         }
@@ -276,6 +294,9 @@ class TelaLeitores {
         }
 
         this.leitorEditandoId = null;
+        this.dadosOriginais = null;
+        this.fechamentoPendente = false;
+        this.exibirMensagem('', '', this.mensagemFormulario);
     }
 
     visualizarLeitor(leitor) {
@@ -315,6 +336,9 @@ class TelaLeitores {
         this.leitorEditandoId = leitor.id_leitor;
         this.modalTitle.textContent = 'Editar leitor';
         this.preencherFormulario(leitor);
+        this.dadosOriginais = JSON.stringify(this.dadosDoFormulario());
+        this.fechamentoPendente = false;
+        this.exibirMensagem('', '', this.mensagemFormulario);
         if (this.modalCadastro) {
             this.modalCadastro.classList.add('open');
         }
@@ -324,8 +348,59 @@ class TelaLeitores {
         if (!this.formulario) return;
         this.formulario.nome.value = leitor.nome || '';
         this.formulario.email.value = leitor.email || '';
-        this.formulario.telefone.value = leitor.telefone || '';
+        this.formulario.telefone.value = this.formatarTelefone(leitor.telefone || '');
         this.formulario.data_cadastro.value = leitor.data_cadastro || '';
+    }
+
+    formatarTelefone(valor) {
+        const digitos = String(valor || '').replace(/\D/g, '').slice(0, 11);
+        const ddd = digitos.slice(0, 2);
+        const numero = digitos.slice(2);
+
+        if (digitos.length <= 2) return ddd ? `(${ddd}` : '';
+        if (digitos.length <= 6) return `(${ddd}) ${numero}`;
+        if (digitos.length <= 10) return `(${ddd}) ${numero.slice(0, 4)}-${numero.slice(4)}`;
+        return `(${ddd}) ${numero.slice(0, 5)}-${numero.slice(5)}`;
+    }
+
+    dadosDoFormulario() {
+        if (!this.formulario) return {};
+        return {
+            nome: this.formulario.nome.value.trim(),
+            email: this.formulario.email.value.trim(),
+            telefone: this.formulario.telefone.value.trim()
+        };
+    }
+
+    formularioAlterado() {
+        return JSON.stringify(this.dadosDoFormulario()) !== this.dadosOriginais;
+    }
+
+    formularioPreenchido() {
+        const dados = this.dadosDoFormulario();
+        return Boolean(dados.nome || dados.email || dados.telefone);
+    }
+
+    pedirFechamentoCadastro() {
+        const deveConfirmar = Boolean(
+            this.leitorEditandoId
+            || this.formularioAlterado()
+            || this.formularioPreenchido()
+        );
+        const pergunta = this.leitorEditandoId
+            ? 'Deseja cancelar a edição do leitor?'
+            : 'Deseja cancelar o cadastro do leitor?';
+
+        if (deveConfirmar && !window.confirm(pergunta)) return;
+        this.fecharModalCadastro();
+    }
+
+    limparMensagemFormulario() {
+        this.fechamentoPendente = false;
+        if (this.mensagemFormulario) {
+            this.mensagemFormulario.textContent = '';
+            this.mensagemFormulario.className = 'mensagem mensagem-formulario';
+        }
     }
 
     /* Envia o que foi digitado; quem valida é o servidor. */
@@ -334,14 +409,23 @@ class TelaLeitores {
         if (!this.formulario) return;
 
         const botao = this.formulario.querySelector('button[type="submit"]');
-        const leitor = {
-            nome: this.formulario.nome.value,
-            email: this.formulario.email.value,
-            telefone: this.formulario.telefone.value
-        };
+        const leitor = this.dadosDoFormulario();
+        const digitosTelefone = leitor.telefone.replace(/\D/g, '');
+
+        if (!digitosTelefone) {
+            this.exibirMensagem('O campo telefone é obrigatório.', 'erro', this.mensagemFormulario);
+            this.formulario.telefone.focus();
+            return;
+        }
+
+        if (![10, 11].includes(digitosTelefone.length)) {
+            this.exibirMensagem('O campo telefone deve ter DDD e número: 10 dígitos (fixo) ou 11 (celular).', 'erro', this.mensagemFormulario);
+            this.formulario.telefone.focus();
+            return;
+        }
 
         botao.disabled = true;
-        this.exibirMensagem('Salvando...');
+        this.exibirMensagem('Salvando...', '', this.mensagemFormulario);
 
         try {
             const editando = this.leitorEditandoId;
@@ -356,7 +440,7 @@ class TelaLeitores {
                 'sucesso'
             );
         } catch (erro) {
-            this.exibirMensagem(erro.message, 'erro');
+            this.exibirMensagem(erro.message, 'erro', this.mensagemFormulario);
         } finally {
             botao.disabled = false;
         }
@@ -396,9 +480,15 @@ class TelaLeitores {
     }
 
     /* Mostra a mensagem num lugar só: dentro do formulário, se ele estiver aberto; senão, no aviso da tela. */
-    exibirMensagem(texto, tipo = '') {
+    exibirMensagem(texto, tipo = '', alvo = null) {
         const classe = tipo ? `mensagem ${tipo}` : 'mensagem';
         const formularioAberto = Boolean(this.modalCadastro && this.modalCadastro.classList.contains('open'));
+
+        if (alvo) {
+            alvo.textContent = texto;
+            alvo.className = alvo === this.mensagemFormulario ? `${classe} mensagem-formulario` : classe;
+            return;
+        }
 
         if (this.mensagemFormulario) {
             this.mensagemFormulario.textContent = formularioAberto ? texto : '';
@@ -415,19 +505,21 @@ class TelaLeitores {
         this.mensagem.setAttribute('role', 'status');
         this.mensagem.setAttribute('aria-live', 'polite');
 
-        if (!formularioAberto && tipo === 'sucesso') {
+        if (!formularioAberto && (tipo === 'sucesso' || tipo === 'erro')) {
             this.mensagem.classList.add('toast-visible');
+
+            const tempoVisivel = tipo === 'erro' ? 10000 : 2600;
 
             this.toastTimer = setTimeout(() => {
                 this.mensagem.classList.add('toast-leaving');
                 this.mensagem.classList.remove('toast-visible');
-            }, 2600);
+            }, tempoVisivel);
 
             this.toastHideTimer = setTimeout(() => {
                 this.mensagem.classList.remove('toast-visible', 'toast-leaving');
                 this.mensagem.textContent = '';
                 this.mensagem.className = 'mensagem';
-            }, 3400);
+            }, tempoVisivel + 800);
         }
     }
 }

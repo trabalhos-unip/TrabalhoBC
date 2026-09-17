@@ -73,8 +73,8 @@ class CampoBusca {
             this.valor = '';
             this.agendarBusca(300);
         });
-        // Ao entrar no campo (clicando ou com Tab), já mostra as primeiras sugestões.
-        this.input.addEventListener('focus', () => this.agendarBusca(0));
+        // A lista abre somente quando o usuário interage explicitamente com o campo.
+        // Isso evita que o popup já abra expandido ao renderizar o modal.
         this.input.addEventListener('click', () => {
             if (this.lista.hidden) this.agendarBusca(0);
         });

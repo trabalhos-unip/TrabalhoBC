@@ -18,6 +18,7 @@ class Servidor(SimpleHTTPRequestHandler):
 
     # AplicacaoAPI definida no main.py.
     api = None
+    protocol_version = "HTTP/1.1"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(PASTA_FRONTEND), **kwargs)

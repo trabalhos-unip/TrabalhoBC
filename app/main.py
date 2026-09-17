@@ -9,7 +9,7 @@ Execute a partir da raiz do projeto:
     python -m app.main
 """
 
-from http.server import HTTPServer
+from http.server import ThreadingHTTPServer
 
 from app.core.api import AplicacaoAPI
 from app.core.database import Database
@@ -54,7 +54,7 @@ def montar_repositorios():
         exemplares = ExemplarRepositoryMemoria(livros)
         emprestimos = EmprestimoRepositoryMemoria(leitores, exemplares)
     else:
-        db = Database(config.DB_HOST, config.DB_USER, config.DB_PASSWORD, config.DB_NAME, config.DB_PORT)
+        db = Database(config.DB_HOST, config.DB_USER, config.DB_PASSWORD, config.DB_NAME, config.DB_PORT, pool_size=2)
         livros = LivroRepository(db)
         leitores = LeitorRepository(db)
         exemplares = ExemplarRepository(db)
@@ -118,7 +118,7 @@ def principal():
     if config.USAR_BANCO_MEMORIA:
         print("Modo em memória: começa com dados de exemplo; os cadastros somem ao reiniciar.")
 
-    servidor = HTTPServer((config.SERVIDOR_HOST, config.SERVIDOR_PORTA), Servidor)
+    servidor = ThreadingHTTPServer((config.SERVIDOR_HOST, config.SERVIDOR_PORTA), Servidor)
     print(f"Servidor no ar em http://{config.SERVIDOR_HOST}:{config.SERVIDOR_PORTA}")
     try:
         servidor.serve_forever()
